@@ -1,16 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
 
 from typing import Annotated
 
-from app.api.schemas.tasks import CreateTask, TaskResponse, TaskDescription
+from app.api.schemas.tasks import CreateTask, TaskResponse, TaskDescription, UpdateTask
 from app.api.schemas.users import RegisterUser, UserResponse
 from app.services.tasks_service import TasksService
 from app.utils.unitofwork import IUnitOfWork, UnitOfWork
-from app.core.security import get_user_from_token
+from app.core.security import get_user_from_token, get_payload
+
+
 
 tasks_router = APIRouter()
-
 async def get_tasks_service(uow: IUnitOfWork = Depends(UnitOfWork)) -> TasksService:
     return TasksService(uow)
 
@@ -30,9 +31,9 @@ async def login(user_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 
 
 @tasks_router.post('/logout')
-async def logout() -> dict:
+async def logout(jwt: str = Depends(get_payload)) -> dict:
     # Инвалидизация JWT-токена пользователя
-    pass
+    return {'message': jwt}
 
 
 @tasks_router.post('/tasks', response_model=TaskResponse)
@@ -45,24 +46,34 @@ async def create_new_task(task: TaskDescription,
 
 
 @tasks_router.get('/tasks')
-async def get_all_tasks() -> dict:
+async def get_all_tasks(request: Request,
+        task_service: TasksService = Depends(get_tasks_service),
+                        current_user: str = Depends(get_user_from_token),) -> dict:
     # Получение списка всех записей текущего пользователя
-    pass
+    return {'message': await task_service.select_all_tasks(current_user)}
 
 
-@tasks_router.get('/tasks/{task_id}')
-async def get_task_by_id() -> dict:
+@tasks_router.get('/tasks/{task_id}', response_model=TaskResponse)
+async def get_task_by_id(task_id: int,
+                         task_service: TasksService = Depends(get_tasks_service),
+                         current_user: str = Depends(get_user_from_token)) -> TaskResponse:
     # Получение детали конкретной записи по её идентификатору
-    pass
+    return await task_service.select_task_by_id(task_id=task_id, login=current_user)
 
 
-@tasks_router.put('/tasks/{task_id}')
-async def update_task() -> dict:
+@tasks_router.put('/tasks/{task_id}', response_model=TaskResponse)
+async def update_task(task_id: int,
+                      updates: UpdateTask,
+                      task_service: TasksService = Depends(get_tasks_service),
+                      current_user: str = Depends(get_user_from_token)) -> TaskResponse:
     # Обновление данных конкретной записи
-    pass
+    return await task_service.update_task_by_id(task_id=task_id, login=current_user, updates=updates.model_dump())
 
 
 @tasks_router.delete('/tasks/{task_id}')
-async def delete_task() -> dict:
+async def delete_task(task_id: int,
+                      task_service: TasksService = Depends(get_tasks_service),
+                      current_user: str = Depends(get_user_from_token)) -> dict:
     # Удаление конкретной записи
-    pass
+    return {'message': 'Task successfully deleted',
+            'task': await task_service.del_task_by_id(task_id=task_id, login=current_user)}
