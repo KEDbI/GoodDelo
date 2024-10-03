@@ -47,7 +47,7 @@ async def logout() -> dict:
 
 
 @tasks_router.post('/tasks', response_model=TaskResponse)
-@limiter.limit('2/minute')
+@limiter.limit('100/minute')
 async def create_new_task(request: Request,
                           task: TaskDescription,
                           task_service: TasksService = Depends(get_tasks_service),
@@ -58,7 +58,7 @@ async def create_new_task(request: Request,
 
 
 @tasks_router.get('/tasks')
-@limiter.limit('2/minute')
+@limiter.limit('100/minute')
 async def get_all_tasks(request: Request,
         task_service: TasksService = Depends(get_tasks_service),
                         current_user: str = Depends(get_user_from_token),) -> dict:
@@ -67,7 +67,7 @@ async def get_all_tasks(request: Request,
 
 
 @tasks_router.get('/tasks/{task_id}', response_model=TaskResponse)
-@limiter.limit('2/minute')
+@limiter.limit('100/minute')
 async def get_task_by_id(request: Request,
                          task_id: int,
                          task_service: TasksService = Depends(get_tasks_service),
@@ -77,7 +77,7 @@ async def get_task_by_id(request: Request,
 
 
 @tasks_router.put('/tasks/{task_id}', response_model=TaskResponse)
-@limiter.limit('2/minute')
+@limiter.limit('100/minute')
 async def update_task(request: Request,
                       task_id: int,
                       updates: UpdateTask,
@@ -88,7 +88,7 @@ async def update_task(request: Request,
 
 
 @tasks_router.delete('/tasks/{task_id}')
-@limiter.limit('2/minute')
+@limiter.limit('100/minute')
 async def delete_task(request: Request,
                       task_id: int,
                       task_service: TasksService = Depends(get_tasks_service),
