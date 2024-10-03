@@ -3,6 +3,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from typing import Annotated
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
 from app.api.schemas.tasks import CreateTask, TaskResponse, TaskDescription, UpdateTask
 from app.api.schemas.users import RegisterUser, UserResponse
 from app.services.tasks_service import TasksService
@@ -10,20 +13,27 @@ from app.utils.unitofwork import IUnitOfWork, UnitOfWork
 from app.core.security import get_user_from_token, get_payload
 
 
-
+limiter = Limiter(key_func=get_remote_address)
 tasks_router = APIRouter()
+
+
 async def get_tasks_service(uow: IUnitOfWork = Depends(UnitOfWork)) -> TasksService:
     return TasksService(uow)
 
 
 @tasks_router.post('/register', response_model=UserResponse)
-async def registration(user: RegisterUser, task_service: TasksService = Depends(get_tasks_service)) -> UserResponse:
+@limiter.limit('100/minute')
+async def registration(request: Request,
+                       user: RegisterUser,
+                       task_service: TasksService = Depends(get_tasks_service)) -> UserResponse:
     # Создание нового пользователя с необходимыми данными
     return await task_service.register_user(user)
 
 
 @tasks_router.post('/login')
-async def login(user_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+@limiter.limit('100/minute')
+async def login(request: Request,
+                user_data: Annotated[OAuth2PasswordRequestForm, Depends()],
                 task_service: TasksService = Depends(get_tasks_service)) -> dict:
     # Аутентификация пользователя и выдача JWT-токена
     jwt = await task_service.get_jwt(user_data)
@@ -31,13 +41,15 @@ async def login(user_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 
 
 @tasks_router.post('/logout')
-async def logout(jwt: str = Depends(get_payload)) -> dict:
+async def logout() -> dict:
     # Инвалидизация JWT-токена пользователя
-    return {'message': jwt}
+    pass
 
 
 @tasks_router.post('/tasks', response_model=TaskResponse)
-async def create_new_task(task: TaskDescription,
+@limiter.limit('2/minute')
+async def create_new_task(request: Request,
+                          task: TaskDescription,
                           task_service: TasksService = Depends(get_tasks_service),
                           current_user: str = Depends(get_user_from_token)) -> TaskResponse:
     # Создание новой записи пользователя
@@ -46,6 +58,7 @@ async def create_new_task(task: TaskDescription,
 
 
 @tasks_router.get('/tasks')
+@limiter.limit('2/minute')
 async def get_all_tasks(request: Request,
         task_service: TasksService = Depends(get_tasks_service),
                         current_user: str = Depends(get_user_from_token),) -> dict:
@@ -54,7 +67,9 @@ async def get_all_tasks(request: Request,
 
 
 @tasks_router.get('/tasks/{task_id}', response_model=TaskResponse)
-async def get_task_by_id(task_id: int,
+@limiter.limit('2/minute')
+async def get_task_by_id(request: Request,
+                         task_id: int,
                          task_service: TasksService = Depends(get_tasks_service),
                          current_user: str = Depends(get_user_from_token)) -> TaskResponse:
     # Получение детали конкретной записи по её идентификатору
@@ -62,7 +77,9 @@ async def get_task_by_id(task_id: int,
 
 
 @tasks_router.put('/tasks/{task_id}', response_model=TaskResponse)
-async def update_task(task_id: int,
+@limiter.limit('2/minute')
+async def update_task(request: Request,
+                      task_id: int,
                       updates: UpdateTask,
                       task_service: TasksService = Depends(get_tasks_service),
                       current_user: str = Depends(get_user_from_token)) -> TaskResponse:
@@ -71,7 +88,9 @@ async def update_task(task_id: int,
 
 
 @tasks_router.delete('/tasks/{task_id}')
-async def delete_task(task_id: int,
+@limiter.limit('2/minute')
+async def delete_task(request: Request,
+                      task_id: int,
                       task_service: TasksService = Depends(get_tasks_service),
                       current_user: str = Depends(get_user_from_token)) -> dict:
     # Удаление конкретной записи

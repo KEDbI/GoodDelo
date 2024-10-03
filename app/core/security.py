@@ -44,7 +44,3 @@ def decode_jwt(token: str = Depends(oauth2_scheme)) -> dict:
 
 def get_user_from_token(payload: dict = Depends(decode_jwt)) -> str:
     return payload['sub']
-
-
-def get_payload(payload: dict = Depends(decode_jwt)) -> dict:
-    return payload
