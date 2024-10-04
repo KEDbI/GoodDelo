@@ -10,7 +10,7 @@ from app.api.schemas.tasks import CreateTask, TaskResponse, TaskDescription, Upd
 from app.api.schemas.users import RegisterUser, UserResponse
 from app.services.tasks_service import TasksService
 from app.utils.unitofwork import IUnitOfWork, UnitOfWork
-from app.core.security import get_user_from_token, get_payload
+from app.core.security import get_user_from_token
 
 
 limiter = Limiter(key_func=get_remote_address)
