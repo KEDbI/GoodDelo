@@ -8,3 +8,5 @@ PyJWT==2.9.0
 passlib==1.7.4
 alembic==1.13.3
 uvicorn==0.31.0
+psycopg2==2.9.9 # алембик работает с этим драйвером
+asyncpg==0.29.0
